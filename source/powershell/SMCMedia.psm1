@@ -1,4 +1,4 @@
-function Get-GooglePhotosLocalSources() {
+function Get-GooglePhotosLocalSource() {
 
   <#
     .SYNOPSIS
@@ -31,7 +31,7 @@ function Get-GooglePhotosLocalSources() {
       $sourceObject = [pscustomobject]@{
         Name = $source.name
         Path = $source.path
-      }    
+      }
 
       # return object
       Write-Output $sourceObject
@@ -48,7 +48,7 @@ function New-FileAuditRecord() {
     New-FileAuditRecord
     # generate an audit record
   #>
-  [CmdletBinding()]
+  [CmdletBinding(SupportsShouldProcess=$true)]
 
   param (
     [Alias("FullName")]
@@ -94,7 +94,7 @@ function New-FileAuditRecord() {
           FileLength = $fileItem.Length
           FileLastWriteDateTime = Get-Date($fileItem.LastWriteTime) -Format 'yyyy-MM-dd HH:mm:ss'
           HashAlgorithm = $fileHash.Algorithm
-          HashValue = $fileHash.Hash     
+          HashValue = $fileHash.Hash
         }
 
         # return file audit record
@@ -173,7 +173,7 @@ function Add-GooglePhotosCatalogItem() {
 
   param (
     [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [string]$Path='\\nas2\scripts\catalogs\google-photos-catalog.csv',  
+      [string]$Path='\\nas2\scripts\catalogs\google-photos-catalog.csv',
     [Parameter(Mandatory=$true, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
       [ref]$Catalog,
     [Parameter(Mandatory=$true, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
@@ -202,7 +202,7 @@ function Add-GooglePhotosCatalogItem() {
     $AuditRecord | Export-Csv -Path $Path -Append -NoTypeInformation
   }
 }
-function Import-GooglePhotos() {
+function Import-GooglePhotosItem() {
 
   <#
     .SYNOPSIS
@@ -230,7 +230,7 @@ function Import-GooglePhotos() {
       $mediaExtensions += Get-PhotoFileExtensions
     }
 
-    # include video extensions if specified    
+    # include video extensions if specified
     if ($Videos) {
       $mediaExtensions += Get-VideoFileExtensions
     }
@@ -266,11 +266,11 @@ function Import-GooglePhotos() {
 
         # # import file
         # Import-SMCMedia -Path $file.FullName -SkipBackup
-        
+
         # add record to catalog
         Add-GooglePhotosCatalogItem -Catalog ([ref]$catalog) -AuditRecord $auditRecord
       }
-    }    
+    }
   }
 }
 function Get-MediaFileExtension() {
@@ -343,6 +343,8 @@ function Get-MediaFileType() {
 
     .EXAMPLE
   #>
+
+  [OutputType([string])]
   [CmdletBinding()]
 
   param (
@@ -378,7 +380,7 @@ function Get-MediaFileType() {
       }
       else {
         Write-Error ('Unknown media file type for file {0}' -f $item)
-      }  
+      }
     }
   }
 
@@ -420,7 +422,7 @@ function Get-MediaFile() {
     if ($Photo) {
       $paramGetMediaFileExtension.Photo = $true
     }
-    
+
     if ($Video) {
       $paramGetMediaFileExtension.Video = $true
     }
@@ -442,7 +444,7 @@ function Get-MediaFile() {
 
     # loop through each item in array
     foreach ($item in $Path) {
-      
+
       # add path property and value to param hashtable for this item
       $paramGetChildItem.Path = $item
 
@@ -506,14 +508,14 @@ function Get-MediaFileExifRecord() {
     # tags that contain date/time values
     $tagNames += '-DateTimeOriginal'
     $tagNames += '-MediaCreateDate'
-    $tagNames += '-ModifyDate'    
+    $tagNames += '-ModifyDate'
     $tagNames += '-LastPhotoDate'
     $tagNames += '-CreationDateValue'
     $tagNames += '-FileName'
   }
 
   process {
-    
+
     # loop through each media file path and add to array
     foreach($item in $MediaFilePath) {
       $mediaFilePaths += $item
@@ -545,7 +547,7 @@ function Get-MediaFileExifRecord() {
     }
 
     # remove arg file
-    Remove-ExifToolArgFile -Path $argFilePath 
+    Remove-ExifToolArgFile -Path $argFilePath
 
     # restore whatif preference
     $WhatIfPreference = $currentWhatIfPreference
@@ -584,10 +586,10 @@ function Get-MediaFileDateTimeRecord() {
     else {
       $workingMediaFileType = Get-MediaFileType -MediaFilePath $MediaFileExifRecord.MediaFilePath
     }
-    
+
   }
 
-  process {   
+  process {
 
     # init return object
     $dateTimeRecord.Name = $null
@@ -607,7 +609,7 @@ function Get-MediaFileDateTimeRecord() {
           $dateTimeRecord.Value = $MediaFileExifRecord.ModifyDate
         }
         else {
-          Write-Error ('Not Implemented for photo file {0}' -f $MediaFileExifRecord.MediaFilePath)  
+          Write-Error ('Not Implemented for photo file {0}' -f $MediaFileExifRecord.MediaFilePath)
         }
       }
       'video' {
@@ -633,8 +635,8 @@ function Get-MediaFileDateTimeRecord() {
             $dateTimeRecord.Value = $MediaFileExifRecord.MediaCreateDate
           }
           else {
-            Write-Error ('Not Implemented for video file {0}' -f $MediaFileExifRecord.MediaFilePath)  
-          }        
+            Write-Error ('Not Implemented for video file {0}' -f $MediaFileExifRecord.MediaFilePath)
+          }
         }
       }
     }
@@ -672,7 +674,7 @@ function Get-MediaFileRecord() {
   }
 
   process {
-    
+
     # loop through each media file path and add to array
     foreach($item in $MediaFilePath) {
       $mediaFilePaths += $item
@@ -705,7 +707,7 @@ function Get-MediaFileRecord() {
         Path = [System.IO.Path]::GetDirectoryName($item)
         FileName = [System.IO.Path]::GetFileNameWithoutExtension($item)
         FileExtension = [System.IO.Path]::GetExtension($item)
-        FileNameSeriesIndex = 0        
+        FileNameSeriesIndex = 0
         Type = $mediaFileType
         Length = (Get-Item -Path $item | Select-Object -ExpandProperty 'Length')
         DateTimeProperty = $mediaFileDateTimeRecord.Name
@@ -755,7 +757,10 @@ function New-ExifToolArgFile() {
 
     .EXAMPLE
   #>
-  [CmdletBinding()]
+
+  [OutputType([string])]
+
+  [CmdletBinding(SupportsShouldProcess=$true)]
 
   param (
     [Parameter(Mandatory=$true, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
@@ -792,7 +797,8 @@ function Remove-ExifToolArgFile() {
 
     .EXAMPLE
   #>
-  [CmdletBinding()]
+
+  [CmdletBinding(SupportsShouldProcess=$true)]
 
   param (
     [Parameter(Mandatory=$true, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
@@ -890,7 +896,7 @@ function ConvertFrom-ExifToolOutput() {
     # loop through each item in tag name array and add to hash table
     foreach ($item in $cleanTagNames) {
       $properties.Add($item, $null)
-    }    
+    }
   }
 
   process {}
@@ -968,7 +974,7 @@ function Rename-MediaFileWithTimeStamp() {
 
       # rename item with timestamp file name
       Rename-Item -Path $item.FullName -NewName ('{0}{1}' -f $item.TimeStampValue, $item.FileExtension)
-    }    
+    }
   }
 
   end {
@@ -998,11 +1004,11 @@ function Repair-MediaFileDateTimeValue() {
     $mediaFileRecords = @()
 
     # split date time shift into components
-    $shiftMatch = [regex]::Match($DateTimeShift, '(\+|\-)(.*)')    
+    $shiftMatch = [regex]::Match($DateTimeShift, '(\+|\-)(.*)')
   }
 
   process {
-    
+
     # loop through each media file record add to array
     foreach($item in $MediaFileRecord) {
       $mediaFileRecords += $item
@@ -1040,7 +1046,7 @@ function Repair-MediaFileDateTimeValue() {
     }
 
     # remove arg file
-    Remove-ExifToolArgFile -Path $argFilePath    
+    Remove-ExifToolArgFile -Path $argFilePath
   }
 }
 function Find-RemovableMediaPath() {
@@ -1064,7 +1070,7 @@ function Find-RemovableMediaPath() {
   end {
 
     # look for removable media that is not empty
-    $results = Get-WmiObject -Class Win32_LogicalDisk | Where-Object {$_.DriveType -eq 2} | Where-Object {$null -ne $_.Size}
+    $results = Get-CimInstance -ClassName 'Win32_LogicalDisk' | Where-Object {$_.DriveType -eq 2} | Where-Object {$null -ne $_.Size}
 
     # loop through each result
     foreach ($result in $results) {
@@ -1075,7 +1081,7 @@ function Find-RemovableMediaPath() {
       }
 
       # return object
-      Write-Output $pathObject      
+      Write-Output $pathObject
     }
   }
 }
@@ -1115,7 +1121,7 @@ function Import-MediaFile() {
 
     # cache copy of bound params
     $mediaFileParams = $PSBoundParameters
-    
+
     # loop through each filter param and remove as needed
     foreach ($item in $filterParams) {
       if ($mediaFileParams.ContainsKey($item)) {
@@ -1142,7 +1148,7 @@ function Import-MediaFile() {
         # add recurse switch so the full path of the removable drive is searched
         if (!$mediaFileParams.ContainsKey('Recurse')) {
           $mediaFileParams.Add('Recurse', $true)
-        }        
+        }
       }
       else {
         Write-Error "No path was provided and no removable drives were found with media files."
@@ -1159,7 +1165,7 @@ function Import-MediaFile() {
 
     # if media files were found
     if ($mediaFiles) {
-        
+
       # get media file records
       $mediaFileRecords = $mediaFiles | Get-MediaFileRecord
 
@@ -1193,7 +1199,7 @@ function Import-MediaFile() {
 
           # move item to import folder
           Move-Item -Path $mediaFileRecord.FullName -Destination $destinationPath
-        } 
+        }
       }
     }
     else {
