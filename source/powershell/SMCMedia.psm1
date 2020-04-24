@@ -285,9 +285,13 @@ function Get-MediaFileExtension() {
 
   param (
     [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [switch]$Photo,
+      [switch]$PhotoRaw,
     [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [switch]$Video
+      [switch]$PhotoDev,
+    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
+      [switch]$Video,
+    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
+      [switch]$IncludePhotoDataFiles
   )
 
   begin {
@@ -297,10 +301,21 @@ function Get-MediaFileExtension() {
     $fileExtensions = @()
 
     # init photo file extensions
-    $photoFileExtensions = @()
-    $photoFileExtensions += '.jpg'
-    $photoFileExtensions += '.cr2'
-    $photoFileExtensions += '.arw'
+    $photoDevFileExtensions = @()
+    $photoDevFileExtensions += '.jpg'
+    $photoDevFileExtensions += '.jpeg'
+
+    # init photo raw file extensions
+    $photoRawFileExtensions = @()
+    $photoRawFileExtensions += '.cr2'
+    $photoRawFileExtensions += '.arw'
+    $photoRawFileExtensions += '.tif'
+    $photoRawFileExtensions += '.tiff'
+    $photoRawFileExtensions += '.dng'
+
+    # init photo data file extensions
+    $photoDataFileExtensions = @()
+    $photoDataFileExtensions += '.xmp'
 
     # init video file extensions
     $videoFileExtensions = @()
@@ -314,22 +329,37 @@ function Get-MediaFileExtension() {
 
   end {
 
-    # if neither switch present, return all extensions
-    if ((!$Photo) -and (!$Video)) {
-      $fileExtensions += $photoFileExtensions
+    # if no switches present, return all extensions
+    if ((!$PhotoRaw) -and (!$PhotoDev) -and (!$Video)) {
+      $fileExtensions += $photoRawFileExtensions
+      $fileExtensions += $photoDevFileExtensions
       $fileExtensions += $videoFileExtensions
     }
     else {
 
-      # if photo switch present, add extensions
-      if ($Photo) {
-        $fileExtensions += $photoFileExtensions
+      # if photoraw switch present, add extensions
+      if ($PhotoRaw) {
+        $fileExtensions += $photoRawFileExtensions
+      }
+
+      # if photoraw switch present, add extensions
+      if ($PhotoDev) {
+        $fileExtensions += $photoDevFileExtensions
+      }
+
+      # if photodata switch present, add extensions
+      if ($PhotoData) {
+        $fileExtensions += $photoDataFileExtensions
       }
 
       # if video switch present, add extensions
       if ($Video) {
         $fileExtensions += $videoFileExtensions
       }
+    }
+
+    if ($IncludePhotoDataFiles) {
+      $fileExtensions += $photoDataFileExtensions
     }
 
     # return object
@@ -357,7 +387,8 @@ function Get-MediaFileType() {
     $ErrorActionPreference = "Stop"
 
     # get photo file extensions
-    $photoFileExtensions = Get-MediaFileExtension -Photo
+    $photoFileExtensions = Get-MediaFileExtension -PhotoRaw
+    $photoFileExtensions += Get-MediaFileExtension -PhotoDev
 
     # get video file extensions
     $videoFileExtensions = Get-MediaFileExtension -Video
@@ -408,9 +439,13 @@ function Get-MediaFile() {
     [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
       [switch]$Recurse,
     [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [switch]$Photo,
+      [switch]$PhotoRaw,
     [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [switch]$Video
+      [switch]$PhotoDev,
+    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
+      [switch]$Video,
+    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
+      [switch]$IncludePhotoDataFiles
   )
 
   begin {
@@ -419,8 +454,16 @@ function Get-MediaFile() {
     # init getmediafileextension param hashtable
     $paramGetMediaFileExtension = @{}
 
-    if ($Photo) {
-      $paramGetMediaFileExtension.Photo = $true
+    if ($PhotoRaw) {
+      $paramGetMediaFileExtension.PhotoRaw = $true
+    }
+
+    if ($PhotoDev) {
+      $paramGetMediaFileExtension.PhotoDev = $true
+    }
+
+    if ($IncludePhotoDataFiles) {
+      $paramGetMediaFileExtension.IncludePhotoDataFiles = $true
     }
 
     if ($Video) {
@@ -1205,6 +1248,126 @@ function Import-MediaFile() {
     else {
       Write-Warning 'No media files were found in the specified path.'
     }
+  }
+}
+function Publish-PhotoFile() {
+
+  <#
+    .SYNOPSIS
+
+    .EXAMPLE
+  #>
+  [CmdletBinding(SupportsShouldProcess)]
+
+  param (
+    [Parameter(Mandatory=$true, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)]
+      [string]$SourcePath,
+    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
+      [string]$DestinationRawRootPath='\\nas2\photo\raw',
+    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
+      [string]$DestinationDevRootPath='\\nas2\photo\dev',
+    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
+      [switch]$Recurse
+  )
+
+  begin {
+    $ErrorActionPreference = "Stop"
+
+    # init vars
+    $mediaFileParams = @{}
+    $mediaFileParams.Path = $SourcePath
+    $mediaFileParams.PhotoRaw = $true
+    $mediaFileParams.PhotoDev = $true
+    $mediaFileParams.IncludePhotoDataFiles = $true
+    if ($Recurse) {
+      $mediaFileParams.Recurse = $true
+    }
+
+    $photoFileRecords = @()
+
+    $rawExtensions = Get-MediaFileExtension -PhotoRaw
+    $devExtensions = Get-MediaFileExtension -PhotoDev
+
+    # find all photo files
+    $photoFiles = Get-MediaFile @mediaFileParams
+
+    # loop through each file
+    foreach ($photoFile in $photoFiles) {
+
+      Write-Verbose ('Processing file name {0}' -f $photoFile.Name)
+
+      # determine type of photo extension and set flags
+      $isRaw = ($photoFile.Extension -in $rawExtensions)
+      $isDev = ($photoFile.Extension -in $devExtensions)
+
+      # search for existing record by base name
+      $resultRecord = $photoFileRecords | Where-Object {$_.SourceFileBaseName -eq $photoFile.BaseName}
+
+      # if record was found, update it
+      if ($resultRecord) {
+
+        if ($isRaw) {
+          $resultRecord.RawFileName = $photoFile.Name
+        }
+        elseif ($isDev) {
+          $resultRecord.DevFileName = $photoFile.Name
+        }
+        else {
+          $resultRecord.DataFileName = $photoFile.Name
+        }
+      }
+      else {
+
+        # create new output object
+        $photoFileRecord = [pscustomobject]@{
+          SourceDirectoryPath = $photoFile.DirectoryName
+          SourceDirectoryName = (Split-Path -Path $photoFile.DirectoryName -Leaf)
+          SourceFileBaseName = $photoFile.BaseName
+          Year = (Split-Path -Path $photoFile.DirectoryName -Leaf) -replace '(\d{4})(-.*)', '$1'
+          RawFileName = $null
+          DevFileName = $null
+          DataFileName = $null
+        }
+
+        if ($isRaw) {
+          $photoFileRecord.RawFileName = $photoFile.Name
+        }
+        elseif ($isDev) {
+          $photoFileRecord.DevFileName = $photoFile.Name
+        }
+        else {
+          $photoFileRecord.DataFileName = $photoFile.Name
+        }
+
+        # add item to array
+        $photoFileRecords += $photoFileRecord
+      }
+    }
+
+    # find records that don't have a year value
+    $results = ($photoFileRecords | Where-Object {$null -eq $_.Year})
+
+    # if found, display them and write an error
+    if ($results) {
+      Write-Output $results
+      Write-Error ('Some records did not have a `"Year`" value.')
+    }
+
+    # find records that have a raw file
+    $results = ($photoFileRecords | Where-Object {$null -eq $_.Year})
+
+    # if found, display them and write an error
+    if ($results) {
+      Write-Output $results
+      Write-Error ('Some records did not have a `"Year`" value.')
+    }
+
+  }
+
+  process {}
+
+  end {
+    Write-Output $photoFileRecords
   }
 }
 
