@@ -575,15 +575,23 @@ function Get-MediaFileExifRecord() {
 
     # create new arg file
     $argFilePath = New-ExifToolArgFile -Command ($commands + $tagNames) -MediaFilePath $mediaFilePaths
-
+    
     # invoke exif tool
     $results = Invoke-ExifTool -Arguments ('-@', $argFilePath)
 
     # if exif tool invocation was successful
     if ($results.Success) {
 
-      # convert to powershell objects
-      ConvertFrom-ExifToolOutput -Output $results.Output -TagNames $tagNames
+      # create params hash for call to ConvertFrom-ExifToolOutput
+      $convertOutputParams = @{}
+      $convertOutputParams.Output = $results.Output
+      $convertOutputParams.TagNames = $tagNames
+      if (($mediaFilePaths | Measure-Object).Count -eq 1) {
+        $convertOutputParams.SingleFilePath = $mediaFilePaths[0]
+      }
+
+      # convert output to powershell object(s)
+      ConvertFrom-ExifToolOutput @convertOutputParams
     }
     else {
       Write-Error $results.Output
@@ -921,7 +929,9 @@ function ConvertFrom-ExifToolOutput() {
     [Parameter(Mandatory=$true, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
       [string[]]$Output,
     [Parameter(Mandatory=$true, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [string[]]$TagNames
+      [string[]]$TagNames,
+    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
+      [string]$SingleFilePath
   )
 
   begin {
@@ -952,24 +962,17 @@ function ConvertFrom-ExifToolOutput() {
     # create regex string to match tag names
     $regexString = '(' + $regexTagNameString + ')(\s{0,}:\s{0,})(.*)'
 
-    # loop through each line in output
-    foreach ($line in $Output) {
+    # a single file produces different output in exif tool, specifically no header is output that contains the file name
+    if ($SingleFilePath) {
 
-      # if the line matches the start of output for a file
-      if ($line -match '={8}\s') {
+      # create a new object
+      $currentObject = New-Object -TypeName 'psobject' -Property $properties
 
-        # add previous current object to array
-        if ($currentObject) {
-          $objects += $currentObject
-        }
+      # set media file path
+      $currentObject.MediaFilePath = $SingleFilePath
 
-        # create a new object
-        $currentObject = New-Object -TypeName 'psobject' -Property $properties
-
-        # set media file path
-        $currentObject.MediaFilePath = $line -replace '(={8}\s)(.*)', '$2' -replace '/', '\'
-      }
-      else {
+      # loop through each line in output
+      foreach ($line in $Output) {
 
         # try to match on tag name
         $match = [regex]::Match($line, $regexString)
@@ -979,6 +982,39 @@ function ConvertFrom-ExifToolOutput() {
 
           # set property value on current object
           $currentObject.PSObject.Properties[($match.Groups[1].Value)].Value = $match.Groups[3].Value
+        }
+      }
+    }
+    else {
+
+      # loop through each line in output
+      foreach ($line in $Output) {
+
+        # if the line matches the start of output for a file
+        if ($line -match '={8}\s') {
+
+          # add previous current object to array
+          if ($currentObject) {
+            $objects += $currentObject
+          }
+
+          # create a new object
+          $currentObject = New-Object -TypeName 'psobject' -Property $properties
+
+          # set media file path
+          $currentObject.MediaFilePath = $line -replace '(={8}\s)(.*)', '$2' -replace '/', '\'
+        }
+        else {
+
+          # try to match on tag name
+          $match = [regex]::Match($line, $regexString)
+
+          # if matched
+          if ($match.Success) {
+
+            # set property value on current object
+            $currentObject.PSObject.Properties[($match.Groups[1].Value)].Value = $match.Groups[3].Value
+          }
         }
       }
     }
