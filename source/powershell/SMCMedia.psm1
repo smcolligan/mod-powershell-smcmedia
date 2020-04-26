@@ -1406,5 +1406,111 @@ function Publish-PhotoFile() {
     Write-Output $photoFileRecords
   }
 }
+function Find-DuplicateMediaFile() {
+
+  <#
+    .SYNOPSIS
+
+    .EXAMPLE
+  #>
+  [CmdletBinding(SupportsShouldProcess)]
+
+  param (
+    [Alias("FullName")]
+    [Parameter(Mandatory=$true, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)]
+      [string[]]$CandidateFilePaths,
+    [Parameter(Mandatory=$true, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
+      [object[]]$SourceAuditRecords
+  )
+
+  begin {
+    $ErrorActionPreference = "Stop"
+
+    $candidatePaths = @()
+    $candidateAuditRecords = @()
+  }
+
+  process {
+
+    # loop through each candidate file path and add to array
+    foreach ($item in $CandidateFilePaths) {
+      $candidatePaths += $item
+    }
+  }
+
+  end {
+
+    # init loop count var
+    $i = 0
+
+    # loop through each path
+    foreach ($path in $candidatePaths) {
+
+      # update loop count var
+      $i += 1
+
+      # display progress
+      Write-Progress -Activity 'Generating audit records ...' -Status $path -PercentComplete (($i / $candidatePaths.Count) * 100)
+
+      # generate audit record for candidate file
+      $candidateAuditRecords += $path | New-FileAuditRecord -AuditName 'Candidates'
+    }
+
+    $results = Compare-Object -ReferenceObject $SourceAuditRecords -DifferenceObject $candidateAuditRecords -Property HashValue -IncludeEqual -ExcludeDifferent -PassThru
+
+    # if there are results
+    if ($results) {
+
+      # loop through each result item
+      foreach ($result in $results) {
+
+        # get reference to current audit object
+        $auditObject = $CandidateAuditRecords | Where-Object {$_.HashValue -eq $result.HashValue}
+
+        # create a new result object, setting the property values
+        $resultObject = [pscustomobject]@{
+          SourceFilePath = ('{0}\{1}{2}' -f $result.Path, $result.FileName, $result.FileExtension)
+          DuplicateFilePath = ('{0}\{1}{2}' -f $auditObject.Path, $auditObject.FileName, $auditObject.FileExtension)
+        }
+
+        Write-Output $resultObject
+      }  
+    }
+  }
+}
+
+function Rename-DuplicateMediaFile() {
+
+  <#
+    .SYNOPSIS
+
+    .EXAMPLE
+  #>
+  [CmdletBinding(SupportsShouldProcess)]
+
+  param (
+    [Parameter(Mandatory=$true, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)]
+      [string[]]$DuplicateFilePath,
+    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
+      [string]$Prefix='dup_',
+    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
+      [string]$Suffix=''
+  )
+
+  begin {
+    $ErrorActionPreference = "Stop"
+  }
+
+  process {
+
+    # loop through each path and rename
+    foreach ($item in $DuplicateFilePath) {
+      Rename-Item -Path $item -NewName ('{0}{1}{2}' -f $Prefix, (Split-Path -Path $item -Leaf), $Suffix)
+    }
+  }
+
+  end {
+  }
+}
 
 Export-ModuleMember *
