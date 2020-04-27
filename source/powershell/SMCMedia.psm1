@@ -1478,7 +1478,6 @@ function Find-DuplicateMediaFile() {
     }
   }
 }
-
 function Rename-DuplicateMediaFile() {
 
   <#
@@ -1492,20 +1491,41 @@ function Rename-DuplicateMediaFile() {
     [Parameter(Mandatory=$true, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)]
       [string[]]$DuplicateFilePath,
     [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [string]$Prefix='dup_',
+      [string]$Prefix='dup',
     [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [string]$Suffix=''
+      [switch]$IncludeSeriesInPrefix
   )
 
   begin {
     $ErrorActionPreference = "Stop"
+
+    # init loop count var
+    $i = 0
   }
 
   process {
 
-    # loop through each path and rename
+    # loop through each path
     foreach ($item in $DuplicateFilePath) {
-      Rename-Item -Path $item -NewName ('{0}{1}{2}' -f $Prefix, (Split-Path -Path $item -Leaf), $Suffix)
+
+      # update loop count var
+      $i += 1
+
+      # calculate new name
+      if ($IncludeSeriesInPrefix) {
+        $newName = ('{0}_{1:000000}_{2}' -f $Prefix, $i, (Split-Path -Path $item -Leaf))
+      }
+      else {
+        $newName = ('{0}_{1}' -f $Prefix, (Split-Path -Path $item -Leaf))
+      }
+
+       # rename file
+      try {
+        Rename-Item -Path $item -NewName $newName
+      }
+      catch {
+        Write-Warning ('Unable to rename file {0} with new name {1} due to error {2}.' -f $item, $newName, $_.Exception.Message)
+      }      
     }
   }
 
