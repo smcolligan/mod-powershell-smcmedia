@@ -291,7 +291,7 @@ function Get-MediaFileExtension() {
     [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
       [switch]$Video,
     [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [switch]$IncludePhotoDataFiles
+      [switch]$IncludeDataFiles
   )
 
   begin {
@@ -313,16 +313,17 @@ function Get-MediaFileExtension() {
     $photoRawFileExtensions += '.tiff'
     $photoRawFileExtensions += '.dng'
 
-    # init photo data file extensions
-    $photoDataFileExtensions = @()
-    $photoDataFileExtensions += '.xmp'
-
     # init video file extensions
     $videoFileExtensions = @()
     $videoFileExtensions += '.mp4'
     $videoFileExtensions += '.mts'
     $videoFileExtensions += '.avi'
     $videoFileExtensions += '.mov'
+
+    # init data file extensions
+    $dataFileExtensions = @()
+    $dataFileExtensions += '.xmp'
+    $dataFileExtensions += '.mmf'
   }
 
   process {}
@@ -347,19 +348,14 @@ function Get-MediaFileExtension() {
         $fileExtensions += $photoDevFileExtensions
       }
 
-      # if photodata switch present, add extensions
-      if ($PhotoData) {
-        $fileExtensions += $photoDataFileExtensions
-      }
-
       # if video switch present, add extensions
       if ($Video) {
         $fileExtensions += $videoFileExtensions
       }
     }
 
-    if ($IncludePhotoDataFiles) {
-      $fileExtensions += $photoDataFileExtensions
+    if ($IncludeDataFiles) {
+      $fileExtensions += $dataFileExtensions
     }
 
     # return object
@@ -392,6 +388,9 @@ function Get-MediaFileType() {
 
     # get video file extensions
     $videoFileExtensions = Get-MediaFileExtension -Video
+
+    # get data file extensions
+    $dataFileExtensions = Compare-Object -ReferenceObject (Get-MediaFileExtension) -DifferenceObject (Get-MediaFileExtension -IncludeDataFiles) -PassThru
   }
 
   process {
@@ -408,6 +407,9 @@ function Get-MediaFileType() {
       }
       elseif ($extension -in $videoFileExtensions) {
         return "video"
+      }
+      elseif ($extension -in $dataFileExtensions) {
+        return "data"
       }
       else {
         Write-Error ('Unknown media file type for file {0}' -f $item)
@@ -445,7 +447,7 @@ function Get-MediaFile() {
     [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
       [switch]$Video,
     [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [switch]$IncludePhotoDataFiles
+      [switch]$IncludeDataFiles
   )
 
   begin {
@@ -462,12 +464,12 @@ function Get-MediaFile() {
       $paramGetMediaFileExtension.PhotoDev = $true
     }
 
-    if ($IncludePhotoDataFiles) {
-      $paramGetMediaFileExtension.IncludePhotoDataFiles = $true
-    }
-
     if ($Video) {
       $paramGetMediaFileExtension.Video = $true
+    }
+
+    if ($IncludeDataFiles) {
+      $paramGetMediaFileExtension.IncludeDataFiles = $true
     }
 
     # get media file extensions
@@ -547,13 +549,15 @@ function Get-MediaFileExifRecord() {
     $tagNames += '-UsePanoramaViewer'
     $tagNames += '-DeviceManufacturer'
     $tagNames += '-DeviceModelName'
+    $tagNames += '-CompressorName'
+    $tagNames += '-SerialNumberHash'
+    $tagNames += '-AndroidVersion'
 
     # tags that contain date/time values
     $tagNames += '-DateTimeOriginal'
     $tagNames += '-MediaCreateDate'
     $tagNames += '-ModifyDate'
     $tagNames += '-LastPhotoDate'
-    $tagNames += '-CreationDateValue'
     $tagNames += '-FileName'
   }
 
@@ -616,6 +620,8 @@ function Get-MediaFileDateTimeRecord() {
   param (
     [Parameter(Mandatory=$true, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$false)]
       [psobject]$MediaFileExifRecord,
+    [Parameter(Mandatory=$true, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
+      [psobject]$MediaFileCameraRecord,      
     [ValidateSet('photo','video')]
     [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
       [string]$MediaFileType
@@ -629,6 +635,9 @@ function Get-MediaFileDateTimeRecord() {
       Name = $null
       Value = $null
     }
+
+    # init date parse format
+    $dateParseFormat = 'yyyy:MM:dd HH:mm:ss'
 
     # if media file type was passed, use it - otherwise look it up
     if ($MediaFileType) {
@@ -651,13 +660,13 @@ function Get-MediaFileDateTimeRecord() {
       'photo' {
 
         # if DateTimeOriginal exists, use it
-        if ($MediaFileExifRecord.DateTimeOriginal) {
+        if ($MediaFileExifRecord.DateTimeOriginal) {          
           $dateTimeRecord.Name = 'DateTimeOriginal'
-          $dateTimeRecord.Value = $MediaFileExifRecord.DateTimeOriginal
+          $dateTimeRecord.Value = [datetime]::ParseExact($MediaFileExifRecord.DateTimeOriginal, $dateParseFormat, $null)
         }
         elseif ($MediaFileExifRecord.ModifyDate) {
           $dateTimeRecord.Name = 'ModifyDate'
-          $dateTimeRecord.Value = $MediaFileExifRecord.ModifyDate
+          $dateTimeRecord.Value = [datetime]::ParseExact($MediaFileExifRecord.ModifyDate, $dateParseFormat, $null)
         }
         else {
           Write-Error ('Not Implemented for photo file {0}' -f $MediaFileExifRecord.MediaFilePath)
@@ -665,32 +674,29 @@ function Get-MediaFileDateTimeRecord() {
       }
       'video' {
 
-        Write-Verbose ('DeviceManufacturer = {0}' -f $MediaFileExifRecord.DeviceManufacturer)
-        Write-Verbose ('DeviceModelName = {0}' -f $MediaFileExifRecord.DeviceModelName)
-        Write-Verbose ('CreationDateValue = {0}' -f $MediaFileExifRecord.CreationDateValue)
-
         # video from sony a6300
-        if (($MediaFileExifRecord.DeviceManufacturer -eq 'Sony') -and ($MediaFileExifRecord.DeviceModelName -eq 'ILCE-6300') -and ($MediaFileExifRecord.CreationDateValue)) {
-          $dateTimeRecord.Name = 'CreationDateValue'
-          $dateTimeRecord.Value = ($MediaFileExifRecord.CreationDateValue -replace '-.*')
+        if (($MediaFileCameraRecord.Manufacturer -eq 'Sony') -and ($MediaFileCameraRecord.Model -eq 'a6300') -and ($MediaFileExifRecord.MediaCreateDate)) {
+          $dateTimeRecord.Name = 'MediaCreateDate'
+          $dateTimeRecord.Value = ([datetime]::ParseExact($MediaFileExifRecord.MediaCreateDate, $dateParseFormat, $null)).ToLocalTime()
         }
-        elseif (($MediaFileExifRecord.ComAndroidManufacturer -eq 'motorola') -and ($MediaFileExifRecord.ComAndroidModel -eq 'moto x4') -and ($MediaFileExifRecord.FileName)) {
-          $dateTimeRecord.Name = 'FileName'
-          $dateTimeRecord.Value = ($MediaFileExifRecord.FileName -replace 'VID_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})(\d{3}).mp4', '$1:$2:$3 $4:$5:$6')
+        elseif (($MediaFileCameraRecord.Manufacturer -eq 'Apple') -and ($MediaFileCameraRecord.Model -eq 'iPhone X') -and ($MediaFileExifRecord.MediaCreateDate)) {
+          $dateTimeRecord.Name = 'MediaCreateDate'
+          $dateTimeRecord.Value = ([datetime]::ParseExact($MediaFileExifRecord.MediaCreateDate, $dateParseFormat, $null)).ToLocalTime()
         }
         else {
-
           # if MediaCreateDate exists, use it
           if ($MediaFileExifRecord.MediaCreateDate) {
             $dateTimeRecord.Name = 'MediaCreateDate'
-            $dateTimeRecord.Value = $MediaFileExifRecord.MediaCreateDate
+            $dateTimeRecord.Value = [datetime]::ParseExact($MediaFileExifRecord.MediaCreateDate, $dateParseFormat, $null)
           }
           else {
-            Write-Error ('Not Implemented for video file {0}' -f $MediaFileExifRecord.MediaFilePath)
+            Write-Error ('Unable to determine DateTime attribute for video file {0}' -f $MediaFileExifRecord.MediaFilePath)
           }
         }
       }
     }
+
+    Write-Verbose ('{0} - {1} - {2}' -f $workingMediaFileType, $dateTimeRecord.Name, $MediaFileExifRecord.MediaFilePath)
 
     # if record has a name value, return it
     if ($dateTimeRecord.Name) {
@@ -700,6 +706,83 @@ function Get-MediaFileDateTimeRecord() {
 
   end {
   }
+}
+function Get-MediaFileCameraInformation() {
+
+  <#
+    .SYNOPSIS
+
+    .EXAMPLE
+  #>
+  [CmdletBinding()]
+
+  param (
+    [Parameter(Mandatory=$true, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$false)]
+      [psobject]$MediaFileExifRecord,
+    [ValidateSet('photo','video')]
+    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
+      [string]$MediaFileType
+  )
+
+  begin {
+    $ErrorActionPreference = "Stop"
+
+    # init return object
+    $cameraInformationRecord = [pscustomobject]@{
+      Manufacturer = $null
+      Model = $null
+    }
+
+    # if media file type was passed, use it - otherwise look it up
+    if ($MediaFileType) {
+      $workingMediaFileType = $MediaFileType
+    }
+    else {
+      $workingMediaFileType = Get-MediaFileType -MediaFilePath $MediaFileExifRecord.MediaFilePath
+    }
+  }
+
+  process {
+
+    # init return object
+    $cameraInformationRecord.Manufacturer = $null
+    $cameraInformationRecord.Model = $null
+
+    # determine camera manufacturer and model based on exif attributes
+    if (($MediaFileExifRecord.DeviceManufacturer -eq 'Sony') -and ($MediaFileExifRecord.DeviceModelName -eq 'ILCE-6300')) {
+      $cameraInformationRecord.Manufacturer = 'Sony'
+      $cameraInformationRecord.Model = 'a6300'
+    }
+    elseif (($MediaFileExifRecord.CompressorName -match 'gopro') -and ($MediaFileExifRecord.SerialNumberHash -eq '4833532b413131313341353531333300')) {
+      $cameraInformationRecord.Manufacturer = 'GoPro'
+      $cameraInformationRecord.Model = 'Hero 3+ Silver'
+    }
+    elseif (($MediaFileExifRecord.Make -eq 'Apple') -and ($MediaFileExifRecord.Model -eq 'iPhone X')) {
+      $cameraInformationRecord.Manufacturer = 'Apple'
+      $cameraInformationRecord.Model = 'iPhone X'
+    }
+    elseif (($MediaFileExifRecord.ComAndroidManufacturer -eq 'motorola') -and ($MediaFileExifRecord.ComAndroidModel -eq 'moto x4')) {
+      $cameraInformationRecord.Manufacturer = 'Motorola'
+      $cameraInformationRecord.Model = 'Moto x4'
+    }    
+    elseif (($MediaFileExifRecord.AndroidVersion -eq '9')) {
+      $cameraInformationRecord.Manufacturer = 'Android'
+      $cameraInformationRecord.Model = '9'
+    }    
+    elseif (($MediaFileExifRecord.AndroidVersion -eq '10')) {
+      $cameraInformationRecord.Manufacturer = 'Android'
+      $cameraInformationRecord.Model = '10'
+    }    
+
+    # if record has a manufacturer value, return it
+    if ($cameraInformationRecord.Manufacturer) {
+      Write-Output $cameraInformationRecord
+    }
+  }
+
+  end {
+  }
+
 }
 function Get-MediaFileRecord() {
 
@@ -740,17 +823,19 @@ function Get-MediaFileRecord() {
     # loop through each path
     foreach ($item in $mediaFilePaths) {
 
+      Write-Verbose ('Processing file {0}...' -f $item)
+
       # get corresponding date/time object
       $mediaFileExifRecord = $mediaFileExifRecords | Where-Object {$_.MediaFilePath -eq $item}
 
       # get media file type
       $mediaFileType = Get-MediaFileType -MediaFilePath $item
 
-      # get media date time value
-      $mediaFileDateTimeRecord = Get-MediaFileDateTimeRecord -MediaFileExifRecord $mediaFileExifRecord -MediaFileType $mediaFileType
+      # get media camera information
+      $mediaFileCameraRecord = Get-MediaFileCameraInformation -MediaFileExifRecord $mediaFileExifRecord
 
-      # cast value to datetime
-      $workingDateTimeValue = [datetime]::ParseExact($mediaFileDateTimeRecord.Value, 'yyyy:MM:dd HH:mm:ss', $null)
+      # get media date time value
+      $mediaFileDateTimeRecord = Get-MediaFileDateTimeRecord -MediaFileExifRecord $mediaFileExifRecord -MediaFileCameraRecord $mediaFileCameraRecord -MediaFileType $mediaFileType
 
       # create new output object
       $mediaFileRecord = [pscustomobject]@{
@@ -762,8 +847,10 @@ function Get-MediaFileRecord() {
         Type = $mediaFileType
         Length = (Get-Item -Path $item | Select-Object -ExpandProperty 'Length')
         DateTimeProperty = $mediaFileDateTimeRecord.Name
-        DateTimeValue = $workingDateTimeValue
-        TimeStampValue = ('{0}_0000' -f $workingDateTimeValue.ToString('yyyy-MM-dd_HH-mm-ss'))
+        DateTimeValue = $mediaFileDateTimeRecord.Value
+        CameraManufacturer = $mediaFileCameraRecord.Manufacturer
+        CameraModel = $mediaFileCameraRecord.Model
+        TimeStampValue = ('{0}_0000' -f ($mediaFileDateTimeRecord.Value).ToString('yyyy-MM-dd_HH-mm-ss'))
         ExifRecord = $mediaFileExifRecord
       }
 
@@ -1035,7 +1122,7 @@ function Rename-MediaFileWithTimeStamp() {
 
     .EXAMPLE
   #>
-  [CmdletBinding()]
+  [CmdletBinding(SupportsShouldProcess)]
 
   param (
     [Parameter(Mandatory=$true, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)]
@@ -1051,8 +1138,14 @@ function Rename-MediaFileWithTimeStamp() {
     # loop through each item in array
     foreach ($item in $MediaFileRecord) {
 
-      # rename item with timestamp file name
-      Rename-Item -Path $item.FullName -NewName ('{0}{1}' -f $item.TimeStampValue, $item.FileExtension)
+      if ($item.FileName -eq $item.TimeStampValue) {
+        Write-Warning ('File "{0}" is already named with its timestamp' -f $item.FileName)
+      }
+      else {
+
+        # rename item with timestamp file name
+        Rename-Item -Path $item.FullName -NewName ('{0}{1}' -f $item.TimeStampValue, $item.FileExtension)
+      }
     }
   }
 
@@ -1314,7 +1407,7 @@ function Publish-PhotoFile() {
     $mediaFileParams.Path = $SourcePath
     $mediaFileParams.PhotoRaw = $true
     $mediaFileParams.PhotoDev = $true
-    $mediaFileParams.IncludePhotoDataFiles = $true
+    $mediaFileParams.IncludeDataFiles = $true
     if ($Recurse) {
       $mediaFileParams.Recurse = $true
     }
