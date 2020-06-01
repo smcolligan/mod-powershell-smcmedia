@@ -552,6 +552,8 @@ function Get-MediaFileExifRecord() {
     $tagNames += '-CompressorName'
     $tagNames += '-SerialNumberHash'
     $tagNames += '-AndroidVersion'
+    $tagNames += '-BLAMMOMake'
+    $tagNames += '-BLAMMOModel'
 
     # tags that contain date/time values
     $tagNames += '-DateTimeOriginal'
@@ -772,7 +774,11 @@ function Get-MediaFileCameraInformation() {
     elseif (($MediaFileExifRecord.AndroidVersion -eq '10')) {
       $cameraInformationRecord.Manufacturer = 'Android'
       $cameraInformationRecord.Model = '10'
-    }    
+    }
+    elseif (($MediaFileExifRecord.BLAMMOMake) -and ($MediaFileExifRecord.BLAMMOModel)) {
+      $cameraInformationRecord.Manufacturer = $MediaFileExifRecord.BLAMMOMake
+      $cameraInformationRecord.Model = $MediaFileExifRecord.BLAMMOModel
+    }
 
     # if record has a manufacturer value, return it
     if ($cameraInformationRecord.Manufacturer) {
