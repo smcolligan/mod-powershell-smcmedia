@@ -1458,10 +1458,21 @@ function Publish-PhotoFile() {
           SourceDirectoryPath = $photoFile.DirectoryName
           SourceDirectoryName = (Split-Path -Path $photoFile.DirectoryName -Leaf)
           SourceFileBaseName = $photoFile.BaseName
+          DestinationRawPath = ""
+          DestinationDevPath = ""
           Year = (Split-Path -Path $photoFile.DirectoryName -Leaf) -replace '(\d{4})(-.*)', '$1'
           RawFileName = $null
           DevFileName = $null
           DataFileName = $null
+        }
+
+        # add destination paths
+        if (($photoFileRecord.SourceDirectoryName) -and ($photoFileRecord.Year)) {
+          $photoFileRecord.DestinationRawPath = ("{0}\{1}\{2}" -f $DestinationRawRootPath, $photoFileRecord.Year, $photoFileRecord.SourceDirectoryName)
+          $photoFileRecord.DestinationDevPath = ("{0}\{1}\{2}" -f $DestinationDevRootPath, $photoFileRecord.Year, $photoFileRecord.SourceDirectoryName)
+        }
+        else {
+          Write-Error ("Could not set photo file destination paths as the SourceDirectoryName and Year values were not populated.")
         }
 
         if ($isRaw) {
@@ -1486,23 +1497,59 @@ function Publish-PhotoFile() {
     if ($results) {
       Write-Output $results
       Write-Error ('Some records did not have a `"Year`" value.')
-    }
-
-    # find records that have a raw file
-    $results = ($photoFileRecords | Where-Object {$null -eq $_.Year})
-
-    # if found, display them and write an error
-    if ($results) {
-      Write-Output $results
-      Write-Error ('Some records did not have a `"Year`" value.')
-    }
-
+    }    
   }
 
   process {}
 
   end {
-    Write-Output $photoFileRecords
+
+    # loop through each photo file record
+    foreach ($item in $photoFileRecords) {
+     
+      Write-Verbose ('Processing photo file record {0}' -f $item.SourceFileBaseName)
+
+      # test raw destination path
+      if (!(Test-Path -Path $item.DestinationRawPath)) {
+
+        # create raw destination path
+        New-Item -Path $item.DestinationRawPath -ItemType Directory -WhatIf:$WhatIfPreference
+      }
+
+      # test dev destination path
+      if (!(Test-Path -Path $item.DestinationDevPath)) {
+
+        # create dev destination path
+        New-Item -Path $item.DestinationDevPath -ItemType Directory -WhatIf:$WhatIfPreference
+      }
+      
+      # publish raw file
+      if ($item.RawFileName) {
+        Move-Item -Path ("{0}\{1}" -f $item.SourceDirectoryPath, $item.RawFileName) -Destination $item.DestinationRawPath -WhatIf:$WhatIfPreference
+      }
+      elseif ($item.DevFileName) {
+        Copy-Item -Path ("{0}\{1}" -f $item.SourceDirectoryPath, $item.DevFileName) -Destination $item.DestinationRawPath -WhatIf:$WhatIfPreference
+      }
+      else {
+        Write-Warning ("There was no raw file to publish for photo file record with base name {0}" -f $item.SourceFileBaseName)
+      }
+
+      # publish dev file
+      if ($item.DevFileName) {
+        Move-Item -Path ("{0}\{1}" -f $item.SourceDirectoryPath, $item.DevFileName) -Destination $item.DestinationDevPath -WhatIf:$WhatIfPreference
+      }
+      else {
+        Write-Warning ("There was no dev file to publish for photo file record with base name {0}" -f $item.SourceFileBaseName)
+      }
+
+      # publish data file
+      if ($item.DataFileName) {
+        Move-Item -Path ("{0}\{1}" -f $item.SourceDirectoryPath, $item.DataFileName) -Destination $item.DestinationRawPath -WhatIf:$WhatIfPreference
+      }
+      else {
+        Write-Warning ("There was no data file to publish for photo file record with base name {0}" -f $item.SourceFileBaseName)
+      }
+    }
   }
 }
 function Find-DuplicateMediaFile() {
