@@ -751,9 +751,60 @@ function Get-MediaFileCameraInformation() {
     $cameraInformationRecord.Model = $null
 
     # determine camera manufacturer and model based on exif attributes
+    switch ($workingMediaFileType) {
+      "photo" {
+        if (($MediaFileExifRecord.Make -eq 'Sony') -and ($MediaFileExifRecord.Model -eq 'ILCE-6300')) {
+          $cameraInformationRecord.Manufacturer = 'Sony'
+          $cameraInformationRecord.Model = 'a6300'
+        }
+        else {
+          Write-Error ('Unable to get camera media file information for photo file {1}.' -f $MediaFileExifRecord.MediaFilePath)
+        }
+      }
+      "video" {
+        if (($MediaFileExifRecord.DeviceManufacturer -eq 'Sony') -and ($MediaFileExifRecord.DeviceModelName -eq 'ILCE-6300')) {
+          $cameraInformationRecord.Manufacturer = 'Sony'
+          $cameraInformationRecord.Model = 'a6300'
+        }
+        elseif (($MediaFileExifRecord.CompressorName -match 'gopro') -and ($MediaFileExifRecord.SerialNumberHash -eq '4833532b413131313341353531333300')) {
+          $cameraInformationRecord.Manufacturer = 'GoPro'
+          $cameraInformationRecord.Model = 'Hero 3+ Silver'
+        }
+        elseif (($MediaFileExifRecord.Make -eq 'Apple') -and ($MediaFileExifRecord.Model -eq 'iPhone X')) {
+          $cameraInformationRecord.Manufacturer = 'Apple'
+          $cameraInformationRecord.Model = 'iPhone X'
+        }
+        elseif (($MediaFileExifRecord.ComAndroidManufacturer -eq 'motorola') -and ($MediaFileExifRecord.ComAndroidModel -eq 'moto x4')) {
+          $cameraInformationRecord.Manufacturer = 'Motorola'
+          $cameraInformationRecord.Model = 'Moto x4'
+        }    
+        elseif (($MediaFileExifRecord.AndroidVersion -eq '9')) {
+          $cameraInformationRecord.Manufacturer = 'Android'
+          $cameraInformationRecord.Model = '9'
+        }    
+        elseif (($MediaFileExifRecord.AndroidVersion -eq '10')) {
+          $cameraInformationRecord.Manufacturer = 'Android'
+          $cameraInformationRecord.Model = '10'
+        }
+        elseif (($MediaFileExifRecord.BLAMMOMake) -and ($MediaFileExifRecord.BLAMMOModel)) {
+          $cameraInformationRecord.Manufacturer = $MediaFileExifRecord.BLAMMOMake
+          $cameraInformationRecord.Model = $MediaFileExifRecord.BLAMMOModel
+        }
+        else {
+          Write-Error ('Unable to get camera media file information for video file {1}.' -f $MediaFileExifRecord.MediaFilePath)
+        }
+      }
+      default {
+        Write-Error ('Unable to get camera media file information for unknown type for file {1}.' -f $MediaFileExifRecord.MediaFilePath)
+      }
+    }
+
+    # determine camera manufacturer and model based on exif attributes
     if (($MediaFileExifRecord.DeviceManufacturer -eq 'Sony') -and ($MediaFileExifRecord.DeviceModelName -eq 'ILCE-6300')) {
       $cameraInformationRecord.Manufacturer = 'Sony'
       $cameraInformationRecord.Model = 'a6300'
+      Write-Verbose "sony"
+      
     }
     elseif (($MediaFileExifRecord.CompressorName -match 'gopro') -and ($MediaFileExifRecord.SerialNumberHash -eq '4833532b413131313341353531333300')) {
       $cameraInformationRecord.Manufacturer = 'GoPro'
@@ -1426,10 +1477,51 @@ function Publish-PhotoFile() {
     # find all photo files
     $photoFiles = Get-MediaFile @mediaFileParams
 
-    # loop through each file
-    foreach ($photoFile in $photoFiles) {
+    # add matched flag to each file
+    $photoFiles | Add-Member -NotePropertyName 'Matched' -NotePropertyValue $false
 
-      Write-Verbose ('Processing file name {0}' -f $photoFile.Name)
+    # process all _e.jpg files
+    foreach ($photoFile in ($photoFiles | Where-Object {(!$_.Matched) -and ($_.BaseName -match '_e$')})) {
+      
+      # create new output object
+      $photoFileRecord = [pscustomobject]@{
+        SourceDirectoryPath = $photoFile.DirectoryName
+        SourceDirectoryName = (Split-Path -Path $photoFile.DirectoryName -Leaf)
+        SourceFileBaseName = ($photoFile.BaseName -replace '_e$')
+        DestinationRawPath = ""
+        DestinationDevPath = ""
+        Year = (Split-Path -Path $photoFile.DirectoryName -Leaf) -replace '(\d{4})(-.*)', '$1'
+        RawFileName = $null
+        DevFileName = $photoFile.Name
+        DataFileName = $null
+      }
+
+      # add item to array
+      $photoFileRecords += $photoFileRecord
+
+      # mark source file as matched
+      $photoFile.Matched = $true
+    }
+
+    # process all _e.jpg original files
+    foreach ($photoFile in ($photoFiles | Where-Object {(!$_.Matched) -and ($_.Extension -match '\.(jpg|jpeg)')})) {
+
+      # search for existing record by base name
+      $resultRecord = $photoFileRecords | Where-Object {$_.SourceFileBaseName -eq $photoFile.BaseName}
+
+      # if matching record found
+      if ($resultRecord) {
+
+        # update raw file name
+        $resultRecord.RawFileName = $photoFile.Name
+
+        # mark source file as matched
+        $photoFile.Matched = $true
+      }
+    }
+
+    # process remaining files
+    foreach ($photoFile in ($photoFiles | Where-Object {(!$_.Matched)})) {
 
       # determine type of photo extension and set flags
       $isRaw = ($photoFile.Extension -in $rawExtensions)
@@ -1466,15 +1558,6 @@ function Publish-PhotoFile() {
           DataFileName = $null
         }
 
-        # add destination paths
-        if (($photoFileRecord.SourceDirectoryName) -and ($photoFileRecord.Year)) {
-          $photoFileRecord.DestinationRawPath = ("{0}\{1}\{2}" -f $DestinationRawRootPath, $photoFileRecord.Year, $photoFileRecord.SourceDirectoryName)
-          $photoFileRecord.DestinationDevPath = ("{0}\{1}\{2}" -f $DestinationDevRootPath, $photoFileRecord.Year, $photoFileRecord.SourceDirectoryName)
-        }
-        else {
-          Write-Error ("Could not set photo file destination paths as the SourceDirectoryName and Year values were not populated.")
-        }
-
         if ($isRaw) {
           $photoFileRecord.RawFileName = $photoFile.Name
         }
@@ -1487,26 +1570,54 @@ function Publish-PhotoFile() {
 
         # add item to array
         $photoFileRecords += $photoFileRecord
+
+        # mark source file as matched
+        $photoFile.Matched = $true
       }
     }
 
-    # find records that don't have a year value
-    $results = ($photoFileRecords | Where-Object {$null -eq $_.Year})
+    # loop through photo file records, make final updates and validate 
+    foreach ($photoFileRecord in $photoFileRecords) {
 
-    # if found, display them and write an error
-    if ($results) {
-      Write-Output $results
-      Write-Error ('Some records did not have a `"Year`" value.')
-    }    
+      # if a record only has a dev file name, set the raw file to the same
+      if (($photoFileRecord.DevFileName) -and (!$photoFileRecord.RawFileName)) {
+        $photoFileRecord.RawFileName = $photoFileRecord.DevFileName
+      }
+
+      # if a record only has a raw file name, write an error
+      if (($photoFileRecord.RawFileName) -and (!$photoFileRecord.DevFileName)) {
+        Write-Error ("Photo file {0} does not have a corresponding developed file." -f $photoFileRecord.SourceFileBaseName)
+      }
+
+      # if a record only has a data file name, write an error
+      if (($photoFileRecord.DataFileName) -and (!$photoFileRecord.RawFileName)) {
+        Write-Error ("Photo file {0} has a data file but no raw file." -f $photoFileRecord.SourceFileBaseName)
+      }
+
+      # add destination paths
+      if (($photoFileRecord.SourceDirectoryName) -and ($photoFileRecord.Year)) {
+        $photoFileRecord.DestinationRawPath = ("{0}\{1}\{2}" -f $DestinationRawRootPath, $photoFileRecord.Year, $photoFileRecord.SourceDirectoryName)
+        $photoFileRecord.DestinationDevPath = ("{0}\{1}\{2}" -f $DestinationDevRootPath, $photoFileRecord.Year, $photoFileRecord.SourceDirectoryName)
+      }
+      else {
+        Write-Error ("Could not set photo file destination path for {0} as the SourceDirectoryName and Year values were not populated." -f $photoFileRecord.SourceFileBaseName)
+      }
+    }
   }
 
   process {}
 
   end {
 
+    # init loop count var
+    $i = 0
+
     # loop through each photo file record
     foreach ($item in $photoFileRecords) {
-     
+
+      # update loop count var
+      $i += 1
+      
       Write-Verbose ('Processing photo file record {0}' -f $item.SourceFileBaseName)
 
       # test raw destination path
@@ -1515,20 +1626,20 @@ function Publish-PhotoFile() {
         # create raw destination path
         New-Item -Path $item.DestinationRawPath -ItemType Directory -WhatIf:$WhatIfPreference
       }
-
+      
       # test dev destination path
       if (!(Test-Path -Path $item.DestinationDevPath)) {
 
         # create dev destination path
         New-Item -Path $item.DestinationDevPath -ItemType Directory -WhatIf:$WhatIfPreference
       }
+
+      # display progress
+      Write-Progress -Activity 'Publishing photo files ...' -Status $item.SourceFileBaseName -PercentComplete (($i / $photoFileRecords.Count) * 100)
       
       # publish raw file
       if ($item.RawFileName) {
         Move-Item -Path ("{0}\{1}" -f $item.SourceDirectoryPath, $item.RawFileName) -Destination $item.DestinationRawPath -WhatIf:$WhatIfPreference
-      }
-      elseif ($item.DevFileName) {
-        Copy-Item -Path ("{0}\{1}" -f $item.SourceDirectoryPath, $item.DevFileName) -Destination $item.DestinationRawPath -WhatIf:$WhatIfPreference
       }
       else {
         Write-Warning ("There was no raw file to publish for photo file record with base name {0}" -f $item.SourceFileBaseName)
