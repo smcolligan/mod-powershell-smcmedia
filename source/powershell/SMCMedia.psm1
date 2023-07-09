@@ -312,6 +312,8 @@ function Get-MediaFileExtension() {
     $photoRawFileExtensions += '.tif'
     $photoRawFileExtensions += '.tiff'
     $photoRawFileExtensions += '.dng'
+    $photoRawFileExtensions += '.heic'
+    $photoRawFileExtensions += '.png'
 
     # init video file extensions
     $videoFileExtensions = @()
@@ -750,61 +752,63 @@ function Get-MediaFileCameraInformation() {
     $cameraInformationRecord.Manufacturer = $null
     $cameraInformationRecord.Model = $null
 
-    # determine camera manufacturer and model based on exif attributes
-    switch ($workingMediaFileType) {
-      "photo" {
-        if (($MediaFileExifRecord.Make -eq 'Sony') -and ($MediaFileExifRecord.Model -eq 'ILCE-6300')) {
-          $cameraInformationRecord.Manufacturer = 'Sony'
-          $cameraInformationRecord.Model = 'a6300'
-        }
-        else {
-          Write-Error ('Unable to get camera media file information for photo file {1}.' -f $MediaFileExifRecord.MediaFilePath)
-        }
-      }
-      "video" {
-        if (($MediaFileExifRecord.DeviceManufacturer -eq 'Sony') -and ($MediaFileExifRecord.DeviceModelName -eq 'ILCE-6300')) {
-          $cameraInformationRecord.Manufacturer = 'Sony'
-          $cameraInformationRecord.Model = 'a6300'
-        }
-        elseif (($MediaFileExifRecord.CompressorName -match 'gopro') -and ($MediaFileExifRecord.SerialNumberHash -eq '4833532b413131313341353531333300')) {
-          $cameraInformationRecord.Manufacturer = 'GoPro'
-          $cameraInformationRecord.Model = 'Hero 3+ Silver'
-        }
-        elseif (($MediaFileExifRecord.Make -eq 'Apple') -and ($MediaFileExifRecord.Model -eq 'iPhone X')) {
-          $cameraInformationRecord.Manufacturer = 'Apple'
-          $cameraInformationRecord.Model = 'iPhone X'
-        }
-        elseif (($MediaFileExifRecord.ComAndroidManufacturer -eq 'motorola') -and ($MediaFileExifRecord.ComAndroidModel -eq 'moto x4')) {
-          $cameraInformationRecord.Manufacturer = 'Motorola'
-          $cameraInformationRecord.Model = 'Moto x4'
-        }    
-        elseif (($MediaFileExifRecord.AndroidVersion -eq '9')) {
-          $cameraInformationRecord.Manufacturer = 'Android'
-          $cameraInformationRecord.Model = '9'
-        }    
-        elseif (($MediaFileExifRecord.AndroidVersion -eq '10')) {
-          $cameraInformationRecord.Manufacturer = 'Android'
-          $cameraInformationRecord.Model = '10'
-        }
-        elseif (($MediaFileExifRecord.BLAMMOMake) -and ($MediaFileExifRecord.BLAMMOModel)) {
-          $cameraInformationRecord.Manufacturer = $MediaFileExifRecord.BLAMMOMake
-          $cameraInformationRecord.Model = $MediaFileExifRecord.BLAMMOModel
-        }
-        else {
-          Write-Error ('Unable to get camera media file information for video file {1}.' -f $MediaFileExifRecord.MediaFilePath)
-        }
-      }
-      default {
-        Write-Error ('Unable to get camera media file information for unknown type for file {1}.' -f $MediaFileExifRecord.MediaFilePath)
-      }
-    }
+    # # determine camera manufacturer and model based on exif attributes
+    # switch ($workingMediaFileType) {
+    #   "photo" {
+    #     if (($MediaFileExifRecord.Make -eq 'Sony') -and ($MediaFileExifRecord.Model -eq 'ILCE-6300')) {
+    #       $cameraInformationRecord.Manufacturer = 'Sony'
+    #       $cameraInformationRecord.Model = 'a6300'
+    #     }
+    #     else {
+    #       Write-Error ('Unable to get camera media file information for photo file {1}.' -f $MediaFileExifRecord.MediaFilePath)
+    #     }
+    #   }
+    #   "video" {
+    #     if (($MediaFileExifRecord.DeviceManufacturer -eq 'Sony') -and ($MediaFileExifRecord.DeviceModelName -eq 'ILCE-6300')) {
+    #       $cameraInformationRecord.Manufacturer = 'Sony'
+    #       $cameraInformationRecord.Model = 'a6300'
+    #     }
+    #     elseif (($MediaFileExifRecord.CompressorName -match 'gopro') -and ($MediaFileExifRecord.SerialNumberHash -eq '4833532b413131313341353531333300')) {
+    #       $cameraInformationRecord.Manufacturer = 'GoPro'
+    #       $cameraInformationRecord.Model = 'Hero 3+ Silver'
+    #     }
+    #     elseif (($MediaFileExifRecord.Make -eq 'Apple') -and ($MediaFileExifRecord.Model -eq 'iPhone X')) {
+    #       $cameraInformationRecord.Manufacturer = 'Apple'
+    #       $cameraInformationRecord.Model = 'iPhone X'
+    #     }
+    #     elseif (($MediaFileExifRecord.ComAndroidManufacturer -eq 'motorola') -and ($MediaFileExifRecord.ComAndroidModel -eq 'moto x4')) {
+    #       $cameraInformationRecord.Manufacturer = 'Motorola'
+    #       $cameraInformationRecord.Model = 'Moto x4'
+    #     }    
+    #     elseif (($MediaFileExifRecord.AndroidVersion -eq '9')) {
+    #       $cameraInformationRecord.Manufacturer = 'Android'
+    #       $cameraInformationRecord.Model = '9'
+    #     }    
+    #     elseif (($MediaFileExifRecord.AndroidVersion -eq '10')) {
+    #       $cameraInformationRecord.Manufacturer = 'Android'
+    #       $cameraInformationRecord.Model = '10'
+    #     }
+    #     elseif (($MediaFileExifRecord.BLAMMOMake) -and ($MediaFileExifRecord.BLAMMOModel)) {
+    #       $cameraInformationRecord.Manufacturer = $MediaFileExifRecord.BLAMMOMake
+    #       $cameraInformationRecord.Model = $MediaFileExifRecord.BLAMMOModel
+    #     }
+    #     else {
+    #       Write-Error ('Unable to get camera media file information for video file {1}.' -f $MediaFileExifRecord.MediaFilePath)
+    #     }
+    #   }
+    #   default {
+    #     Write-Error ('Unable to get camera media file information for unknown type for file {1}.' -f $MediaFileExifRecord.MediaFilePath)
+    #   }
+    # }
+
+    # set default values from exif attributes
+    $cameraInformationRecord.Manufacturer = $MediaFileExifRecord.Make
+    $cameraInformationRecord.Model = $MediaFileExifRecord.Model 
 
     # determine camera manufacturer and model based on exif attributes
     if (($MediaFileExifRecord.DeviceManufacturer -eq 'Sony') -and ($MediaFileExifRecord.DeviceModelName -eq 'ILCE-6300')) {
       $cameraInformationRecord.Manufacturer = 'Sony'
       $cameraInformationRecord.Model = 'a6300'
-      Write-Verbose "sony"
-      
     }
     elseif (($MediaFileExifRecord.CompressorName -match 'gopro') -and ($MediaFileExifRecord.SerialNumberHash -eq '4833532b413131313341353531333300')) {
       $cameraInformationRecord.Manufacturer = 'GoPro'
