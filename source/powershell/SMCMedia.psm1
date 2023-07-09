@@ -9,8 +9,8 @@ function Get-GooglePhotosLocalSource() {
   [CmdletBinding()]
 
   param (
-    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$true)]
-      [string]$SourceDefinitionPath='\\nas2\scripts\data\google-photos-local-sources.json'
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $true)]
+    [string]$SourceDefinitionPath = '\\nas2\scripts\data\google-photos-local-sources.json'
   )
 
   begin {
@@ -22,7 +22,7 @@ function Get-GooglePhotosLocalSource() {
   end {
 
     # import google-photos type sources json
-    $sources = Get-Content -Path $SourceDefinitionPath | ConvertFrom-Json | Where-Object {$_.sources.type -eq 'google-photos'} | Select-Object -ExpandProperty 'sources'
+    $sources = Get-Content -Path $SourceDefinitionPath | ConvertFrom-Json | Where-Object { $_.sources.type -eq 'google-photos' } | Select-Object -ExpandProperty 'sources'
 
     # loop through each source
     foreach ($source in $sources) {
@@ -48,16 +48,16 @@ function New-FileAuditRecord() {
     New-FileAuditRecord
     # generate an audit record
   #>
-  [CmdletBinding(SupportsShouldProcess=$true)]
+  [CmdletBinding(SupportsShouldProcess = $true)]
 
   param (
     [Alias("FullName")]
-    [Parameter(Mandatory=$true, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)]
-      [string[]]$Path,
-    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [string]$AuditName,
-    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [string]$HashAlgorithm='SHA512'
+    [Parameter(Mandatory = $true, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
+    [string[]]$Path,
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [string]$AuditName,
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [string]$HashAlgorithm = 'SHA512'
   )
 
   begin {
@@ -85,16 +85,16 @@ function New-FileAuditRecord() {
 
         # create custom object to store file audit record
         $fileAuditRecord = [PSCustomObject]@{
-          AuditName = $AuditName
-          AuditDateTime = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
-          AuditElapsedSeconds = $timer.Elapsed.Seconds
-          Path = [System.IO.Path]::GetDirectoryName($pathItem)
-          FileName = [System.IO.Path]::GetFileNameWithoutExtension($pathItem)
-          FileExtension = [System.IO.Path]::GetExtension($pathItem)
-          FileLength = $fileItem.Length
+          AuditName             = $AuditName
+          AuditDateTime         = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+          AuditElapsedSeconds   = $timer.Elapsed.Seconds
+          Path                  = [System.IO.Path]::GetDirectoryName($pathItem)
+          FileName              = [System.IO.Path]::GetFileNameWithoutExtension($pathItem)
+          FileExtension         = [System.IO.Path]::GetExtension($pathItem)
+          FileLength            = $fileItem.Length
           FileLastWriteDateTime = Get-Date($fileItem.LastWriteTime) -Format 'yyyy-MM-dd HH:mm:ss'
-          HashAlgorithm = $fileHash.Algorithm
-          HashValue = $fileHash.Hash
+          HashAlgorithm         = $fileHash.Algorithm
+          HashValue             = $fileHash.Hash
         }
 
         # return file audit record
@@ -118,8 +118,8 @@ function Import-GooglePhotosCatalog() {
   [CmdletBinding()]
 
   param (
-    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [string]$Path='\\nas2\scripts\catalogs\google-photos-catalog.csv'
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [string]$Path = '\\nas2\scripts\catalogs\google-photos-catalog.csv'
   )
 
   begin {
@@ -144,10 +144,10 @@ function Find-CatalogItem() {
   [CmdletBinding()]
 
   param (
-    [Parameter(Mandatory=$true, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [psobject]$Catalog,
-    [Parameter(Mandatory=$true, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [string]$HashValue
+    [Parameter(Mandatory = $true, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [psobject]$Catalog,
+    [Parameter(Mandatory = $true, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [string]$HashValue
   )
 
   begin {
@@ -159,7 +159,7 @@ function Find-CatalogItem() {
   end {
 
     # search catalog for item with matching hash value and return
-    $Catalog | Where-Object {$_.HashValue -eq $HashValue}
+    $Catalog | Where-Object { $_.HashValue -eq $HashValue }
   }
 }
 function Add-GooglePhotosCatalogItem() {
@@ -172,12 +172,12 @@ function Add-GooglePhotosCatalogItem() {
   [CmdletBinding()]
 
   param (
-    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [string]$Path='\\nas2\scripts\catalogs\google-photos-catalog.csv',
-    [Parameter(Mandatory=$true, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [ref]$Catalog,
-    [Parameter(Mandatory=$true, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [psobject]$AuditRecord
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [string]$Path = '\\nas2\scripts\catalogs\google-photos-catalog.csv',
+    [Parameter(Mandatory = $true, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [ref]$Catalog,
+    [Parameter(Mandatory = $true, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [psobject]$AuditRecord
   )
 
   begin {
@@ -212,10 +212,10 @@ function Import-GooglePhotosItem() {
   [CmdletBinding()]
 
   param (
-    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [switch]$Photos,
-    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [switch]$Videos
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [switch]$Photos,
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [switch]$Videos
   )
 
   begin {
@@ -252,7 +252,7 @@ function Import-GooglePhotosItem() {
   end {
 
     # load file list, filtering by media extension
-    $files = $sources | Get-ChildItem  | Where-Object {$_.Extension -in $mediaExtensions}
+    $files = $sources | Get-ChildItem  | Where-Object { $_.Extension -in $mediaExtensions }
 
     # loop through files
     foreach ($file in $files) {
@@ -284,14 +284,14 @@ function Get-MediaFileExtension() {
   [CmdletBinding()]
 
   param (
-    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [switch]$PhotoRaw,
-    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [switch]$PhotoDev,
-    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [switch]$Video,
-    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [switch]$IncludeDataFiles
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [switch]$PhotoRaw,
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [switch]$PhotoDev,
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [switch]$Video,
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [switch]$IncludeDataFiles
   )
 
   begin {
@@ -377,8 +377,8 @@ function Get-MediaFileType() {
 
   param (
     [Alias('FullName')]
-    [Parameter(Mandatory=$true, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)]
-      [string[]]$MediaFilePath
+    [Parameter(Mandatory = $true, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
+    [string[]]$MediaFilePath
   )
 
   begin {
@@ -438,18 +438,18 @@ function Get-MediaFile() {
 
   param (
     [Alias('FullName')]
-    [Parameter(Mandatory=$true, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)]
-      [string[]]$Path,
-    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [switch]$Recurse,
-    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [switch]$PhotoRaw,
-    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [switch]$PhotoDev,
-    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [switch]$Video,
-    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [switch]$IncludeDataFiles
+    [Parameter(Mandatory = $true, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
+    [string[]]$Path,
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [switch]$Recurse,
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [switch]$PhotoRaw,
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [switch]$PhotoDev,
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [switch]$Video,
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [switch]$IncludeDataFiles
   )
 
   begin {
@@ -496,7 +496,7 @@ function Get-MediaFile() {
       $paramGetChildItem.Path = $item
 
       # get child items for given path that match selected extensions
-      Get-ChildItem @paramGetChildItem | Where-Object {$_.Extension -in $fileExtensions}
+      Get-ChildItem @paramGetChildItem | Where-Object { $_.Extension -in $fileExtensions }
     }
   }
 
@@ -514,8 +514,8 @@ function Get-MediaFileExifRecord() {
 
   param (
     [Alias('FullName')]
-    [Parameter(Mandatory=$true, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)]
-      [string[]]$MediaFilePath
+    [Parameter(Mandatory = $true, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
+    [string[]]$MediaFilePath
   )
 
   begin {
@@ -568,7 +568,7 @@ function Get-MediaFileExifRecord() {
   process {
 
     # loop through each media file path and add to array
-    foreach($item in $MediaFilePath) {
+    foreach ($item in $MediaFilePath) {
       $mediaFilePaths += $item
     }
   }
@@ -622,13 +622,13 @@ function Get-MediaFileDateTimeRecord() {
   [CmdletBinding()]
 
   param (
-    [Parameter(Mandatory=$true, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$false)]
-      [psobject]$MediaFileExifRecord,
-    [Parameter(Mandatory=$true, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [psobject]$MediaFileCameraRecord,      
-    [ValidateSet('photo','video')]
-    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [string]$MediaFileType
+    [Parameter(Mandatory = $true, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $false)]
+    [psobject]$MediaFileExifRecord,
+    [Parameter(Mandatory = $true, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [psobject]$MediaFileCameraRecord,      
+    [ValidateSet('photo', 'video')]
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [string]$MediaFileType
   )
 
   begin {
@@ -636,7 +636,7 @@ function Get-MediaFileDateTimeRecord() {
 
     # init return object
     $dateTimeRecord = [pscustomobject]@{
-      Name = $null
+      Name  = $null
       Value = $null
     }
 
@@ -721,11 +721,11 @@ function Get-MediaFileCameraInformation() {
   [CmdletBinding()]
 
   param (
-    [Parameter(Mandatory=$true, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$false)]
-      [psobject]$MediaFileExifRecord,
-    [ValidateSet('photo','video')]
-    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [string]$MediaFileType
+    [Parameter(Mandatory = $true, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $false)]
+    [psobject]$MediaFileExifRecord,
+    [ValidateSet('photo', 'video')]
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [string]$MediaFileType
   )
 
   begin {
@@ -734,7 +734,7 @@ function Get-MediaFileCameraInformation() {
     # init return object
     $cameraInformationRecord = [pscustomobject]@{
       Manufacturer = $null
-      Model = $null
+      Model        = $null
     }
 
     # if media file type was passed, use it - otherwise look it up
@@ -810,6 +810,10 @@ function Get-MediaFileCameraInformation() {
       $cameraInformationRecord.Manufacturer = 'Sony'
       $cameraInformationRecord.Model = 'a6300'
     }
+    elseif (($MediaFileExifRecord.DeviceManufacturer -eq 'Sony') -and ($MediaFileExifRecord.DeviceModelName -eq 'ILCE-7M3')) {
+      $cameraInformationRecord.Manufacturer = 'Sony'
+      $cameraInformationRecord.Model = 'a7 iii'
+    }
     elseif (($MediaFileExifRecord.CompressorName -match 'gopro') -and ($MediaFileExifRecord.SerialNumberHash -eq '4833532b413131313341353531333300')) {
       $cameraInformationRecord.Manufacturer = 'GoPro'
       $cameraInformationRecord.Model = 'Hero 3+ Silver'
@@ -856,8 +860,8 @@ function Get-MediaFileRecord() {
 
   param (
     [Alias('FullName')]
-    [Parameter(Mandatory=$true, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)]
-      [string[]]$MediaFilePath
+    [Parameter(Mandatory = $true, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
+    [string[]]$MediaFilePath
   )
 
   begin {
@@ -871,7 +875,7 @@ function Get-MediaFileRecord() {
   process {
 
     # loop through each media file path and add to array
-    foreach($item in $MediaFilePath) {
+    foreach ($item in $MediaFilePath) {
       $mediaFilePaths += $item
     }
   }
@@ -887,7 +891,7 @@ function Get-MediaFileRecord() {
       Write-Verbose ('Processing file {0}...' -f $item)
 
       # get corresponding date/time object
-      $mediaFileExifRecord = $mediaFileExifRecords | Where-Object {$_.MediaFilePath -eq $item}
+      $mediaFileExifRecord = $mediaFileExifRecords | Where-Object { $_.MediaFilePath -eq $item }
 
       # get media file type
       $mediaFileType = Get-MediaFileType -MediaFilePath $item
@@ -900,19 +904,19 @@ function Get-MediaFileRecord() {
 
       # create new output object
       $mediaFileRecord = [pscustomobject]@{
-        FullName = $item
-        Path = [System.IO.Path]::GetDirectoryName($item)
-        FileName = [System.IO.Path]::GetFileNameWithoutExtension($item)
-        FileExtension = [System.IO.Path]::GetExtension($item)
+        FullName            = $item
+        Path                = [System.IO.Path]::GetDirectoryName($item)
+        FileName            = [System.IO.Path]::GetFileNameWithoutExtension($item)
+        FileExtension       = [System.IO.Path]::GetExtension($item)
         FileNameSeriesIndex = 0
-        Type = $mediaFileType
-        Length = (Get-Item -Path $item | Select-Object -ExpandProperty 'Length')
-        DateTimeProperty = $mediaFileDateTimeRecord.Name
-        DateTimeValue = $mediaFileDateTimeRecord.Value
-        CameraManufacturer = $mediaFileCameraRecord.Manufacturer
-        CameraModel = $mediaFileCameraRecord.Model
-        TimeStampValue = ('{0}_0000' -f ($mediaFileDateTimeRecord.Value).ToString('yyyy-MM-dd_HH-mm-ss'))
-        ExifRecord = $mediaFileExifRecord
+        Type                = $mediaFileType
+        Length              = (Get-Item -Path $item | Select-Object -ExpandProperty 'Length')
+        DateTimeProperty    = $mediaFileDateTimeRecord.Name
+        DateTimeValue       = $mediaFileDateTimeRecord.Value
+        CameraManufacturer  = $mediaFileCameraRecord.Manufacturer
+        CameraModel         = $mediaFileCameraRecord.Model
+        TimeStampValue      = ('{0}_0000' -f ($mediaFileDateTimeRecord.Value).ToString('yyyy-MM-dd_HH-mm-ss'))
+        ExifRecord          = $mediaFileExifRecord
       }
 
       # add record to array
@@ -920,7 +924,7 @@ function Get-MediaFileRecord() {
     }
 
     # group records on time stamp file name
-    $fileNameGroups = $mediaFileRecords | Group-Object -Property 'TimeStampValue' | Where-Object {$_.Count -gt 1}
+    $fileNameGroups = $mediaFileRecords | Group-Object -Property 'TimeStampValue' | Where-Object { $_.Count -gt 1 }
 
     # loop through each group
     foreach ($group in $fileNameGroups) {
@@ -959,13 +963,13 @@ function New-ExifToolArgFile() {
 
   [OutputType([string])]
 
-  [CmdletBinding(SupportsShouldProcess=$true)]
+  [CmdletBinding(SupportsShouldProcess = $true)]
 
   param (
-    [Parameter(Mandatory=$true, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [string[]]$Command,
-    [Parameter(Mandatory=$true, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [string[]]$MediaFilePath
+    [Parameter(Mandatory = $true, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [string[]]$Command,
+    [Parameter(Mandatory = $true, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [string[]]$MediaFilePath
   )
 
   begin {
@@ -997,11 +1001,11 @@ function Remove-ExifToolArgFile() {
     .EXAMPLE
   #>
 
-  [CmdletBinding(SupportsShouldProcess=$true)]
+  [CmdletBinding(SupportsShouldProcess = $true)]
 
   param (
-    [Parameter(Mandatory=$true, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [string]$Path
+    [Parameter(Mandatory = $true, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [string]$Path
   )
 
   begin {
@@ -1026,8 +1030,8 @@ function Invoke-ExifTool() {
   [CmdletBinding()]
 
   param (
-    [Parameter(Mandatory=$true, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [string[]]$Arguments
+    [Parameter(Mandatory = $true, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [string[]]$Arguments
   )
 
   begin {
@@ -1041,9 +1045,9 @@ function Invoke-ExifTool() {
     # create custom object to store file audit record
     $invocationResults = [PSCustomObject]@{
       Arguments = $Arguments
-      Output = $null
-      ExitCode = $null
-      Success = $false
+      Output    = $null
+      ExitCode  = $null
+      Success   = $false
     }
 
     # execute exiftool with arguments and capture stdout & stderr
@@ -1074,12 +1078,12 @@ function ConvertFrom-ExifToolOutput() {
   [CmdletBinding()]
 
   param (
-    [Parameter(Mandatory=$true, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [string[]]$Output,
-    [Parameter(Mandatory=$true, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [string[]]$TagNames,
-    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [string]$SingleFilePath
+    [Parameter(Mandatory = $true, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [string[]]$Output,
+    [Parameter(Mandatory = $true, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [string[]]$TagNames,
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [string]$SingleFilePath
   )
 
   begin {
@@ -1186,8 +1190,8 @@ function Rename-MediaFileWithTimeStamp() {
   [CmdletBinding(SupportsShouldProcess)]
 
   param (
-    [Parameter(Mandatory=$true, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)]
-      [psobject[]]$MediaFileRecord
+    [Parameter(Mandatory = $true, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
+    [psobject[]]$MediaFileRecord
   )
 
   begin {
@@ -1223,11 +1227,11 @@ function Repair-MediaFileDateTimeValue() {
   [CmdletBinding()]
 
   param (
-    [Parameter(Mandatory=$true, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)]
-      [psobject[]]$MediaFileRecord,
+    [Parameter(Mandatory = $true, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
+    [psobject[]]$MediaFileRecord,
     [ValidatePattern("^(\+|\-)\d{1,2}:\d{1,2}:\d{1,2}\s\d{1,2}:\d{1,2}:\d{1,2}$")]
-    [Parameter(Mandatory=$true, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [string]$DateTimeShift
+    [Parameter(Mandatory = $true, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [string]$DateTimeShift
   )
 
   begin {
@@ -1243,7 +1247,7 @@ function Repair-MediaFileDateTimeValue() {
   process {
 
     # loop through each media file record add to array
-    foreach($item in $MediaFileRecord) {
+    foreach ($item in $MediaFileRecord) {
       $mediaFileRecords += $item
     }
   }
@@ -1303,7 +1307,7 @@ function Find-RemovableMediaPath() {
   end {
 
     # look for removable media that is not empty
-    $results = Get-CimInstance -ClassName 'Win32_LogicalDisk' | Where-Object {$_.DriveType -eq 2} | Where-Object {$null -ne $_.Size}
+    $results = Get-CimInstance -ClassName 'Win32_LogicalDisk' | Where-Object { $_.DriveType -eq 2 } | Where-Object { $null -ne $_.Size }
 
     # loop through each result
     foreach ($result in $results) {
@@ -1329,18 +1333,18 @@ function Import-MediaFile() {
 
   param (
     [Alias('FullName')]
-    [Parameter(Mandatory=$false, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)]
-      [string[]]$Path,
-    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [switch]$Recurse,
-    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [switch]$Photo,
-    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [switch]$Video,
-    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [string]$PhotoDestinationPath='C:\_media\new\photo',
-    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [string]$VideoDestinationPath='C:\_media\new\video'
+    [Parameter(Mandatory = $false, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
+    [string[]]$Path,
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [switch]$Recurse,
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [switch]$Photo,
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [switch]$Video,
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [string]$PhotoDestinationPath = 'C:\_media\new\photo',
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [string]$VideoDestinationPath = 'C:\_media\new\video'
   )
 
   begin {
@@ -1450,14 +1454,14 @@ function Publish-PhotoFile() {
   [CmdletBinding(SupportsShouldProcess)]
 
   param (
-    [Parameter(Mandatory=$true, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)]
-      [string]$SourcePath,
-    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [string]$DestinationRawRootPath='\\nas2\photo\raw',
-    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [string]$DestinationDevRootPath='\\nas2\photo\dev',
-    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [switch]$Recurse
+    [Parameter(Mandatory = $true, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
+    [string]$SourcePath,
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [string]$DestinationRawRootPath = '\\nas2\photo\raw',
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [string]$DestinationDevRootPath = '\\nas2\photo\dev',
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [switch]$Recurse
   )
 
   begin {
@@ -1485,19 +1489,19 @@ function Publish-PhotoFile() {
     $photoFiles | Add-Member -NotePropertyName 'Matched' -NotePropertyValue $false
 
     # process all _e.jpg files
-    foreach ($photoFile in ($photoFiles | Where-Object {(!$_.Matched) -and ($_.BaseName -match '_e$')})) {
+    foreach ($photoFile in ($photoFiles | Where-Object { (!$_.Matched) -and ($_.BaseName -match '_e$') })) {
       
       # create new output object
       $photoFileRecord = [pscustomobject]@{
         SourceDirectoryPath = $photoFile.DirectoryName
         SourceDirectoryName = (Split-Path -Path $photoFile.DirectoryName -Leaf)
-        SourceFileBaseName = ($photoFile.BaseName -replace '_e$')
-        DestinationRawPath = ""
-        DestinationDevPath = ""
-        Year = (Split-Path -Path $photoFile.DirectoryName -Leaf) -replace '(\d{4})(-.*)', '$1'
-        RawFileName = $null
-        DevFileName = $photoFile.Name
-        DataFileName = $null
+        SourceFileBaseName  = ($photoFile.BaseName -replace '_e$')
+        DestinationRawPath  = ""
+        DestinationDevPath  = ""
+        Year                = (Split-Path -Path $photoFile.DirectoryName -Leaf) -replace '(\d{4})(-.*)', '$1'
+        RawFileName         = $null
+        DevFileName         = $photoFile.Name
+        DataFileName        = $null
       }
 
       # add item to array
@@ -1508,10 +1512,10 @@ function Publish-PhotoFile() {
     }
 
     # process all _e.jpg original files
-    foreach ($photoFile in ($photoFiles | Where-Object {(!$_.Matched) -and ($_.Extension -match '\.(jpg|jpeg)')})) {
+    foreach ($photoFile in ($photoFiles | Where-Object { (!$_.Matched) -and ($_.Extension -match '\.(jpg|jpeg)') })) {
 
       # search for existing record by base name
-      $resultRecord = $photoFileRecords | Where-Object {$_.SourceFileBaseName -eq $photoFile.BaseName}
+      $resultRecord = $photoFileRecords | Where-Object { $_.SourceFileBaseName -eq $photoFile.BaseName }
 
       # if matching record found
       if ($resultRecord) {
@@ -1525,14 +1529,14 @@ function Publish-PhotoFile() {
     }
 
     # process remaining files
-    foreach ($photoFile in ($photoFiles | Where-Object {(!$_.Matched)})) {
+    foreach ($photoFile in ($photoFiles | Where-Object { (!$_.Matched) })) {
 
       # determine type of photo extension and set flags
       $isRaw = ($photoFile.Extension -in $rawExtensions)
       $isDev = ($photoFile.Extension -in $devExtensions)
 
       # search for existing record by base name
-      $resultRecord = $photoFileRecords | Where-Object {$_.SourceFileBaseName -eq $photoFile.BaseName}
+      $resultRecord = $photoFileRecords | Where-Object { $_.SourceFileBaseName -eq $photoFile.BaseName }
 
       # if record was found, update it
       if ($resultRecord) {
@@ -1553,13 +1557,13 @@ function Publish-PhotoFile() {
         $photoFileRecord = [pscustomobject]@{
           SourceDirectoryPath = $photoFile.DirectoryName
           SourceDirectoryName = (Split-Path -Path $photoFile.DirectoryName -Leaf)
-          SourceFileBaseName = $photoFile.BaseName
-          DestinationRawPath = ""
-          DestinationDevPath = ""
-          Year = (Split-Path -Path $photoFile.DirectoryName -Leaf) -replace '(\d{4})(-.*)', '$1'
-          RawFileName = $null
-          DevFileName = $null
-          DataFileName = $null
+          SourceFileBaseName  = $photoFile.BaseName
+          DestinationRawPath  = ""
+          DestinationDevPath  = ""
+          Year                = (Split-Path -Path $photoFile.DirectoryName -Leaf) -replace '(\d{4})(-.*)', '$1'
+          RawFileName         = $null
+          DevFileName         = $null
+          DataFileName        = $null
         }
 
         if ($isRaw) {
@@ -1678,10 +1682,10 @@ function Find-DuplicateMediaFile() {
 
   param (
     [Alias("FullName")]
-    [Parameter(Mandatory=$true, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)]
-      [string[]]$CandidateFilePaths,
-    [Parameter(Mandatory=$true, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [object[]]$SourceAuditRecords
+    [Parameter(Mandatory = $true, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
+    [string[]]$CandidateFilePaths,
+    [Parameter(Mandatory = $true, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [object[]]$SourceAuditRecords
   )
 
   begin {
@@ -1726,11 +1730,11 @@ function Find-DuplicateMediaFile() {
       foreach ($result in $results) {
 
         # get reference to current audit object
-        $auditObject = $CandidateAuditRecords | Where-Object {$_.HashValue -eq $result.HashValue}
+        $auditObject = $CandidateAuditRecords | Where-Object { $_.HashValue -eq $result.HashValue }
 
         # create a new result object, setting the property values
         $resultObject = [pscustomobject]@{
-          SourceFilePath = ('{0}\{1}{2}' -f $result.Path, $result.FileName, $result.FileExtension)
+          SourceFilePath    = ('{0}\{1}{2}' -f $result.Path, $result.FileName, $result.FileExtension)
           DuplicateFilePath = ('{0}\{1}{2}' -f $auditObject.Path, $auditObject.FileName, $auditObject.FileExtension)
         }
 
@@ -1749,12 +1753,12 @@ function Rename-DuplicateMediaFile() {
   [CmdletBinding(SupportsShouldProcess)]
 
   param (
-    [Parameter(Mandatory=$true, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)]
-      [string[]]$DuplicateFilePath,
-    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [string]$Prefix='dup',
-    [Parameter(Mandatory=$false, ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
-      [switch]$IncludeSeriesInPrefix
+    [Parameter(Mandatory = $true, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
+    [string[]]$DuplicateFilePath,
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [string]$Prefix = 'dup',
+    [Parameter(Mandatory = $false, ValueFromPipeline = $false, ValueFromPipelineByPropertyName = $false)]
+    [switch]$IncludeSeriesInPrefix
   )
 
   begin {
@@ -1780,7 +1784,7 @@ function Rename-DuplicateMediaFile() {
         $newName = ('{0}_{1}' -f $Prefix, (Split-Path -Path $item -Leaf))
       }
 
-       # rename file
+      # rename file
       try {
         Rename-Item -Path $item -NewName $newName
       }
